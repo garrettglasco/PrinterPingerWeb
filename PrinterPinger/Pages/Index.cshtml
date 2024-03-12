@@ -16,8 +16,23 @@
         <button type="button" class="btn btn-primary" id="startButton">Start Pinging</button>
         <button type="button" class="btn btn-danger" id="stopButton" style="display:none;">Stop Pinging</button>
 
-        <div class="col-md-6">
-            <canvas id="statusChart" width="200" height="200"></canvas>
+        <div class="row">
+            <div class="col-md-6">
+                <canvas id="statusChart" width="200" height="200"></canvas>
+            </div>
+            <div class="col-md-6">
+                <div id="scoreboard" class="scoreboard">
+                    <h4 class="scoreboard-title">Scoreboard</h4>
+                    <div class="score-section green">
+                        <span class="label">Green:</span>
+                        <span id="greenScore" class="score-number">0</span>
+                    </div>
+                    <div class="score-section red">
+                        <span class="label">Red:</span>
+                        <span id="redScore" class="score-number">0</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
 
@@ -128,19 +143,31 @@
             .then(data => {
                 statusCell.innerText = data; // Display ping status in the status cell
                 statusCell.style.backgroundColor = (data.trim().toLowerCase() === "success") ? "green" : "red";
-                if (data.trim().toLowerCase() === "success") {
-                    successCount++;
-                } else {
-                    failureCount++;
-                }
                 updateChart();
             });
     }
 
-
     function updateChart() {
-        statusChart.data.datasets[0].data = [successCount, failureCount];
-        statusChart.data.datasets[0].backgroundColor = ['green', 'red']; // Reset colors
+        var greenNum = 0;
+        var redNum = 0;
+        var rows = document.getElementById("ipTable").getElementsByTagName("tbody")[0].rows;
+
+        for (var i = 0; i < rows.length; i++) {
+            var color = rows[i].cells[2].style.backgroundColor;
+            if (color === 'green') {
+                greenNum++;
+            } else if (color === 'red') {
+                redNum++;
+            }
+        }
+
+        var totalGreen = document.getElementById("greenScore");
+        var totalRed = document.getElementById("redScore");
+        totalGreen.textContent = greenNum;
+        totalRed.textContent = redNum;
+
+        // Update data for the pie chart
+        statusChart.data.datasets[0].data = [greenNum, redNum];
         statusChart.update();
     }
 
@@ -158,3 +185,45 @@
         });
     });
 </script>
+
+<style>
+    .scoreboard {
+        position: relative;
+        background-color: #ddd; /* Color of the scoreboard roof */
+        padding: 10px;
+        border-radius: 10px;
+        z-index: 1; /* Ensure scoreboard is on top */
+    }
+
+    .scoreboard-title {
+        text-align: center;
+        margin: 0;
+    }
+
+    .score-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+        .score-section .label {
+            flex-grow: 1;
+        }
+
+    .score-number {
+        color: black;
+    }
+
+    .green {
+        background-color: #4caf50;
+    }
+
+    .red {
+        background-color: #f44336;
+    }
+
+</style>
