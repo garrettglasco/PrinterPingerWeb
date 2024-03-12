@@ -1,0 +1,160 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+<body>
+    <style>
+        .ipTableRow:hover {
+            background-color: lightblue;
+        }
+    </style>
+
+    @if (Model.IpAddresses.Any())
+    {
+        <br />
+        <button type="button" class="btn btn-primary" id="startButton">Start Pinging</button>
+        <button type="button" class="btn btn-danger" id="stopButton" style="display:none;">Stop Pinging</button>
+
+        <div class="col-md-6">
+            <canvas id="statusChart" width="200" height="200"></canvas>
+        </div>
+
+
+        <table class="table table-hover" id="ipTable">
+            <thead>
+                <tr class="table table-secondary ipTableRow">
+                    @foreach (var columnName in Model.IpAddresses.First().Keys)
+                    {
+                        <th>@columnName</th>
+                    }
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ipAddressDict in Model.IpAddresses)
+                {
+                    <tr class="table-dark">
+                        @foreach (var kvp in ipAddressDict)
+                        {
+                            <td>@kvp.Value</td>
+                        }
+                        <td></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <form method="post" enctype="multipart/form-data">
+            <input type="file" id="fileUpload" name="file" />
+            <br />
+            <button type="submit" class="btn btn-primary">Upload</button>
+        </form>
+    }
+    else
+    {
+        <h1>Upload a file</h1>
+        <br />
+        <form method="post" enctype="multipart/form-data">
+            <input type="file" id="fileUpload" name="file" />
+            <br />
+            <button type="submit" class="btn btn-primary">Upload</button>
+        </form>
+    }
+</body>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    var pinging = false;
+    var intervalId;
+    var successCount = 0;
+    var failureCount = 0;
+
+    var ctx = document.getElementById('statusChart').getContext('2d');
+    var statusChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Success', 'Failure'],
+            datasets: [{
+                label: 'Status',
+                data: [0, 0],
+                backgroundColor: [
+                    'green',
+                    'red'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: false, // Disable responsiveness
+            legend: {
+                display: false // Hide legend
+            },
+            layout: {
+                padding: 20 // Add padding
+            }
+        }
+    });
+
+    document.getElementById("startButton").addEventListener("click", function () {
+        pinging = true;
+        document.getElementById("startButton").style.display = "none";
+        document.getElementById("stopButton").style.display = "block";
+        intervalId = setInterval(pingAllIpAddresses, 1000);
+    });
+
+    document.getElementById("stopButton").addEventListener("click", function () {
+        pinging = false;
+        document.getElementById("startButton").style.display = "block";
+        document.getElementById("stopButton").style.display = "none";
+        clearInterval(intervalId);
+    });
+
+    function pingAllIpAddresses() {
+        var rows = document.getElementById("ipTable").getElementsByTagName("tbody")[0].rows;
+        successCount = 0;
+        failureCount = 0;
+        for (var i = 0; i < rows.length; i++) {
+            var ipAddress = rows[i].cells[1].innerText;
+            var statusCell = rows[i].cells[2]; // Get the status cell
+            pingIpAddress(ipAddress, statusCell);
+        }
+    }
+
+    function pingIpAddress(ipAddress, statusCell) {
+        fetch('/Index?handler=Ping&ipAddress=' + ipAddress)
+            .then(response => response.text())
+            .then(data => {
+                statusCell.innerText = data; // Display ping status in the status cell
+                statusCell.style.backgroundColor = (data.trim().toLowerCase() === "success") ? "green" : "red";
+                if (data.trim().toLowerCase() === "success") {
+                    successCount++;
+                } else {
+                    failureCount++;
+                }
+                updateChart();
+            });
+    }
+
+
+    function updateChart() {
+        statusChart.data.datasets[0].data = [successCount, failureCount];
+        statusChart.data.datasets[0].backgroundColor = ['green', 'red']; // Reset colors
+        statusChart.update();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        var rows = document.querySelectorAll(".ipTableRow");
+
+        rows.forEach(function (row) {
+            row.addEventListener("mouseenter", function () {
+                this.classList.add("ipTableRowHover");
+            });
+
+            row.addEventListener("mouseleave", function () {
+                this.classList.remove("ipTableRowHover");
+            });
+        });
+    });
+</script>
